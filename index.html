@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Banco de Horas</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header style="position: relative;">
+            <img src="EngeLogo.png" alt="Logo" style="height: 35px; position: absolute; right: 0; top: 50%; transform: translateY(-50%);">
+            <div style="text-align: center;">
+                <h1 style="margin: 0;">Dashboard de Banco de Horas</h1>
+                <p class="subtitle">Análise gerencial de horas trabalhadas</p>
+            </div>
+        </header>
+
+        <!-- Área de Upload -->
+        <section class="upload-section">
+            <div class="upload-box" id="uploadBox">
+                <input type="file" id="fileInput" accept=".xlsx, .xls" hidden>
+                <div class="upload-content">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h3>Arraste a planilha aqui</h3>
+                    <p>ou clique para selecionar</p>
+                    <span class="file-types">Formatos: .xlsx, .xls</span>
+                </div>
+            </div>
+            <div id="fileName" class="file-name"></div>
+            <button id="changeFileBtn" class="change-file-btn" style="display: none;">📤 Trocar Planilha</button>
+        </section>
+
+        <!-- Cards de Resumo -->
+        <section class="summary-cards" id="summaryCards" style="display: none;">
+            <div class="card">
+                <div class="card-icon">👥</div>
+                <div class="card-content">
+                    <h3>Total de Funcionários</h3>
+                    <p class="card-value" id="totalEmployees">0</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">⏱️</div>
+                <div class="card-content">
+                    <h3>Saldo Total</h3>
+                    <p class="card-value" id="totalHours">0h</p>
+                </div>
+            </div>
+            <div class="card positive">
+                <div class="card-icon">✅</div>
+                <div class="card-content">
+                    <h3>Saldo Positivo</h3>
+                    <p class="card-value" id="positiveHours">0h</p>
+                </div>
+            </div>
+            <div class="card negative">
+                <div class="card-icon">⚠️</div>
+                <div class="card-content">
+                    <h3>Saldo Negativo</h3>
+                    <p class="card-value" id="negativeHours">0h</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Gráficos -->
+        <section class="charts-section" id="chartsSection" style="display: none;">
+            <div class="chart-container">
+                <h3>Distribuição de Horas por Funcionário</h3>
+                <canvas id="employeeChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Evolução Mensal</h3>
+                <canvas id="monthlyChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Status do Banco de Horas</h3>
+                <canvas id="statusChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Top 10 - Maiores Saldos</h3>
+                <canvas id="topEmployeesChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Tabela Detalhada -->
+        <section class="table-section" id="tableSection" style="display: none;">
+            <h3>Detalhamento por Funcionário</h3>
+            <div class="table-controls">
+                <input type="text" id="searchInput" placeholder="Buscar funcionário...">
+                <select id="filterSelect">
+                    <option value="all">Todos</option>
+                    <option value="positive">Saldo Positivo</option>
+                    <option value="negative">Saldo Negativo</option>
+                    <option value="zero">Saldo Zero</option>
+                </select>
+            </div>
+            <div class="table-wrapper">
+                <table id="employeeTable">
+                    <thead>
+                        <tr>
+                            <th>Funcionário</th>
+                            <th>Matrícula</th>
+                            <th>Departamento</th>
+                            <th>Total Crédito</th>
+                            <th>Total Débito</th>
+                            <th>Saldo</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Instruções -->
+        <section class="instructions" id="instructions">
+            <h3>📋 Formato da Planilha</h3>
+            <p><strong>Estrutura esperada:</strong></p>
+            <ul>
+                <li>📂 <strong>Cada aba = 1 funcionário</strong> (nome da aba é o primeiro nome)</li>
+                <li>📊 Dentro de cada aba:
+                    <ul style="margin-top: 10px;">
+                        <li><strong>MAT</strong>: Matrícula do funcionário</li>
+                        <li><strong>NOME</strong>: Nome completo</li>
+                        <li><strong>CRÉDITO</strong>: Horas creditadas (formato HH:MM:SS)</li>
+                        <li><strong>DÉBITO</strong>: Horas debitadas (formato HH:MM:SS)</li>
+                        <li><strong>MÊS</strong>: Período (ex: MÊS 05/2025)</li>
+                        <li>Linha com <strong>"POSITIVO"</strong> + total de créditos</li>
+                        <li>Linha com <strong>"NEGATIVO"</strong> + total de débitos</li>
+                        <li>Linha com <strong>"TOTAL"</strong> + saldo final</li>
+                    </ul>
+                </li>
+            </ul>
+            <p class="note">💡 O sistema lê os totais POSITIVO e NEGATIVO já calculados na planilha e usa o nome completo da coluna NOME.</p>
+            <p class="note">⚠️ Abas com nomes: SINDICATO, RELATÓRIO, MODELO, TEMPLATE serão ignoradas automaticamente.</p>
+        </section>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
