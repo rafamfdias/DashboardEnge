@@ -201,194 +201,64 @@ function handleFileSelect(e) {
     const file = e.target.files[0];
     if (file) {
         processFile(file);
-        // Resetar input para permitir reenvio do mesmo arquivo
-        e.target.value = '';
     }
 }
 
-// Processar arquivo Excel
 function processFile(file) {
-    // Limpar dados anteriores
     employeeData = [];
-    
-    // Destruir gráficos antigos com segurança
-    Object.values(charts).forEach(chart => {
-        if (chart && typeof chart.destroy === 'function') {
-            chart.destroy();
-        }
-    });
+    Object.values(charts).forEach(chart => chart.destroy());
     charts = {};
-    
-    // Remover botão de compartilhamento se existir
-    const oldShareBtn = document.getElementById('shareBtn');
-    if (oldShareBtn) {
-        oldShareBtn.remove();
-    }
     
     fileName.textContent = `📄 ${file.name}`;
     fileName.style.display = 'block';
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = e => {
         try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            
-            console.log(`📚 Total de abas: ${workbook.SheetNames.length}`);
-            
-            // Cada aba é um funcionário - filtrar abas que não são funcionários
-            const employees = [];
-            const ignoredSheets = [];
-            const sheetsToIgnore = ['SINDICATO', 'RELATÓRIO', 'RELATORIO', 'MODELO', 'TEMPLATE', 'CONFIG', 'DADOS', 'EDUARDO'];
-            
+            const workbook = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+            let employees = [];
+
             workbook.SheetNames.forEach(sheetName => {
-                // Ignorar abas que são templates ou relatórios
-                const sheetUpper = sheetName.toUpperCase();
-                const shouldIgnore = sheetsToIgnore.some(ignore => sheetUpper.includes(ignore));
-                
-                if (shouldIgnore) {
-                    ignoredSheets.push(sheetName);
-                    console.log(`⏭️  Ignorando aba: "${sheetName}" (não é funcionário)`);
-                    return;
-                }
-                
+                if (shouldIgnoreSheet(sheetName)) return;
+
                 const sheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(sheet);
-                
-                if (jsonData.length === 0) return;
-                
-                // Extrair dados do funcionário
-                let fullName = sheetName; // Nome padrão é o nome da aba
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // formato simples: arrays
+
+                let mat = null;
+                let name = sheetName;
                 let totalCredit = 0;
                 let totalDebit = 0;
-                let mat = null;
-                let department = 'Não especificado';
-                
-                // Log da primeira linha para debug
-                console.log(`\n📄 Aba: ${sheetName} - ${jsonData.length} linhas`);
-                
-                // Processar cada linha
-                jsonData.forEach((row, idx) => {
-                    // Debug apenas primeiras 3 e últimas 3 linhas
-                    if (idx < 3 || idx >= jsonData.length - 3) {
-                        console.log(`  [${idx}]`, row);
-                    }
-                    
-                    // Extrair nome completo da primeira linha com dados
-                    if (!fullName || fullName === sheetName) {
-                        if (row.NOME && typeof row.NOME === 'string' && row.NOME.trim().length > 5) {
-                            const nomeLower = row.NOME.toLowerCase().trim();
-                            if (nomeLower !== 'nome' && !nomeLower.includes('positivo') && !nomeLower.includes('negativo') && !nomeLower.includes('total')) {
-                                fullName = row.NOME.trim();
-                            }
-                        }
-                    }
-                    
-                    // Extrair MAT da primeira linha válida
-                    if (!mat && row.MAT && row.MAT !== 'MAT') {
-                        mat = row.MAT;
-                    }
-                    
-                    // Procurar POSITIVO e NEGATIVO em QUALQUER célula
-                    let temPositivo = false;
-                    let temNegativo = false;
-                    
-                    Object.values(row).forEach(val => {
-                        const valStr = String(val).toUpperCase();
-                        if (valStr.includes('POSITIVO')) temPositivo = true;
-                        if (valStr.includes('NEGATIVO')) temNegativo = true;
-                    });
-                    
-                    // Se encontrou POSITIVO, buscar o valor numérico em QUALQUER coluna
-                    if (temPositivo) {
-                        Object.entries(row).forEach(([key, val]) => {
-                            // Ignorar colunas de texto
-                            if (key === '__rowNum__' || key === 'MAT' || key === 'NOME' || key === 'MÊS' || key.includes('__EMPTY')) return;
-                            
-                            // Se o valor é numérico
-                            if (typeof val === 'number' && val > 0) {
-                                // Excel armazena tempo como fração de DIA (1 hora = 1/24)
-                                // Se < 1, é fração de dia, multiplicar por 24 para converter em horas
-                                totalCredit = val < 1 ? val * 24 : val;
-                                console.log(`  ✅ POSITIVO na coluna "${key}": ${val} (dias) = ${totalCredit.toFixed(4)}h`);
-                            } else if (typeof val === 'string' && val.includes(':')) {
-                                const converted = timeToHours(val);
-                                if (converted > 0) {
-                                    totalCredit = converted;
-                                    console.log(`  ✅ POSITIVO na coluna "${key}": ${val} = ${totalCredit.toFixed(4)}h`);
-                                }
-                            }
-                        });
-                    }
-                    
-                    // Se encontrou NEGATIVO, buscar o valor numérico em QUALQUER coluna
-                    if (temNegativo) {
-                        Object.entries(row).forEach(([key, val]) => {
-                            // Ignorar colunas de texto
-                            if (key === '__rowNum__' || key === 'MAT' || key === 'NOME' || key === 'MÊS' || key.includes('__EMPTY')) return;
-                            
-                            // Se o valor é numérico
-                            if (typeof val === 'number' && val > 0) {
-                                // Excel armazena tempo como fração de DIA (1 hora = 1/24)
-                                // Se < 1, é fração de dia, multiplicar por 24 para converter em horas
-                                totalDebit = val < 1 ? val * 24 : val;
-                                console.log(`  ⚠️  NEGATIVO na coluna "${key}": ${val} (dias) = ${totalDebit.toFixed(4)}h`);
-                            } else if (typeof val === 'string' && val.includes(':')) {
-                                const converted = timeToHours(val);
-                                if (converted > 0) {
-                                    totalDebit = converted;
-                                    console.log(`  ⚠️  NEGATIVO na coluna "${key}": ${val} = ${totalDebit.toFixed(4)}h`);
-                                }
-                            }
-                        });
-                    }
-                });
-                
-                console.log(`  📊 Resumo: Nome="${fullName}" | MAT=${mat} | Crédito=${totalCredit}h | Débito=${totalDebit}h`);
-                
-                // Criar objeto do funcionário
+
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    const colA = row[0];
+                    const colB = row[1];
+                    const colC = row[2];
+                    const colD = row[3];
+
+
+                    if (!colA) break;
+
+                    if (!mat) mat = colA;
+                    if (colB && typeof colB === 'string') name = colB.trim();
+
+                    totalCredit += excelToDecimal(colC);
+                    totalDebit += excelToDecimal(colD);
+                }
+
                 employees.push({
-                    name: fullName,
+                    name,
                     id: mat || sheetName,
-                    department: department,
                     workedHours: totalCredit,
                     expectedHours: totalDebit,
-                    balance: totalCredit - totalDebit,
-                    sheetData: jsonData
+                    balance: totalCredit - totalDebit
                 });
-                
-                console.log(`✅ ${fullName} (Mat: ${mat}): Crédito=${totalCredit.toFixed(2)}h | Débito=${totalDebit.toFixed(2)}h | Saldo=${(totalCredit - totalDebit).toFixed(2)}h`);
             });
-            
-            if (employees.length === 0) {
-                alert('Nenhum funcionário encontrado na planilha!');
-                return;
-            }
 
-            // 🚫 FILTRO TEMPORÁRIO: Remover funcionário específico
-            // TODO: REMOVER este filtro quando ANDERSON FELIPE FERREIRA DA COSTA entrar na empresa
-            const namesToExclude = ['ANDERSON FELIPE FERREIRA DA COSTA'];
-            const beforeFilter = employees.length;
-            let filteredEmployees = employees.filter(emp => {
-                const shouldExclude = namesToExclude.some(name => 
-                    emp.name.toUpperCase().includes(name.toUpperCase())
-                );
-                if (shouldExclude) {
-                    console.log(`🚫 Funcionário temporariamente filtrado: ${emp.name}`);
-                }
-                return !shouldExclude;
-            });
-            
-            if (beforeFilter !== filteredEmployees.length) {
-                console.log(`⚠️  ${beforeFilter - filteredEmployees.length} funcionário(s) filtrado(s) temporariamente`);
-            }
+            employees = applyTemporaryFilter(employees);
 
-            console.log(`\n✅ Funcionários válidos encontrados: ${filteredEmployees.length}`);
-            if (ignoredSheets.length > 0) {
-                console.log(`⏭️  Abas ignoradas (${ignoredSheets.length}): ${ignoredSheets.join(', ')}`);
-            }
+            employeeData = employees.map(normalizeEmployeeData);
 
-            processEmployeeDataNew(filteredEmployees);
             saveData(file.name);
             displayDashboard();
         } catch (error) {
@@ -427,14 +297,14 @@ function processEmployeeDataNew(employees) {
     // 🚫 FILTRO TEMPORÁRIO: Aplicar filtro aqui também
     // TODO: REMOVER quando ANDERSON FELIPE FERREIRA DA COSTA entrar na empresa
     const namesToExclude = ['ANDERSON FELIPE FERREIRA DA COSTA'];
-    let filteredEmployees = employees.filter(emp => {
+    employees = employees.filter(emp => {
         const shouldExclude = namesToExclude.some(name => 
             emp.name.toUpperCase().includes(name.toUpperCase())
         );
         return !shouldExclude;
     });
     
-    employeeData = filteredEmployees.map((emp, idx) => {
+    employeeData = employees.map((emp, idx) => {
         const balance = emp.balance;
         
         // Determinar status
@@ -903,9 +773,9 @@ function populateTable() {
             <td>${emp.name || 'N/A'}</td>
             <td>${emp.id || 'N/A'}</td>
             <td>${emp.department || 'N/A'}</td>
-            <td>${formatHours(emp.workedHours)}</td>
-            <td>${formatHours(emp.expectedHours)}</td>
-            <td class="${emp.balance > 0.0167 ? 'positive-value' : emp.balance < -0.0167 ? 'negative-value' : ''}" data-balance="${emp.balance}">${hoursToTimeFormat(emp.balance)}</td>
+            <td>${decimalToHHMM(emp.workedHours)}</td>
+            <td>${decimalToHHMM(emp.expectedHours)}</td>
+            <td class="${emp.balance > 0.0167 ? 'positive-value' : emp.balance < -0.0167 ? 'negative-value' : ''}" data-balance="${emp.balance}">${decimalToHHMM(emp.balance)}</td>
             <td><span class="status-badge ${emp.status.toLowerCase()}">${emp.status}</span></td>
         `;
     });
@@ -968,3 +838,62 @@ function hoursToTimeFormat(decimalHours) {
     const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     return isNegative ? `-${formatted}` : formatted;
 }
+
+function shouldIgnoreSheet(name) {
+    const ignore = ['SINDICATO','RELATORIO','RELATÓRIO','MODELO','CONFIG','DADOS','EDUARDO','TEMPLATE'];
+    return ignore.some(i => name.toUpperCase().includes(i));
+}
+
+// function timeToHours(v) {
+//     if (!v) return 0;
+//     if (typeof v === 'number') return v < 1 ? v * 24 : v;
+//     if (typeof v === 'string' && v.includes(':')) {
+//         const [h,m,s] = v.split(':').map(Number);
+//         return h + (m/60) + ((s||0)/3600);
+//     }
+//     return 0;
+// }
+
+function applyTemporaryFilter(list) {
+    const blocked = ['ANDERSON FELIPE FERREIRA DA COSTA'];
+    return list.filter(emp => !blocked.some(n => emp.name.toUpperCase().includes(n)));
+}
+
+function normalizeEmployeeData(emp) {
+    const balance = emp.balance;
+    return {
+        name: emp.name,
+        id: emp.id,
+        department: 'Não especificado',
+        workedHours: emp.workedHours,
+        expectedHours: emp.expectedHours,
+        balance,
+        status: balance > 0.0167 ? 'Positivo' : balance < -0.0167 ? 'Negativo' : 'Neutro'
+    };
+}
+
+function excelToDecimal(v) {
+    if (!v) return 0;
+
+    if (typeof v === "number") {
+        return v * 24;
+    }
+
+    if (typeof v === "string" && v.includes(":")) {
+        const [h, m, s = 0] = v.split(":").map(Number);
+        return h + (m / 60) + (s / 3600);
+    }
+
+    return 0;
+}
+
+function decimalToHHMM(decimal) {
+    const negative = decimal < 0;
+    decimal = Math.abs(decimal);
+
+    const hours = Math.floor(decimal);
+    const minutes = Math.round((decimal - hours) * 60);
+
+    return `${negative ? "-" : ""}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
