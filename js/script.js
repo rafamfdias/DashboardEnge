@@ -218,11 +218,16 @@ function processFile(file) {
             const workbook = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
             let employees = [];
 
-            workbook.SheetNames.forEach(sheetName => {
+
+            const visibleSheets = workbook.Workbook.Sheets
+                .filter(s => s.Hidden !== 1 && s.Hidden !== 2)
+                .map(s => s.name);
+
+            visibleSheets.forEach(sheetName => {
                 if (shouldIgnoreSheet(sheetName)) return;
 
                 const sheet = workbook.Sheets[sheetName];
-                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // formato simples: arrays
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
                 let mat = null;
                 let name = sheetName;
@@ -873,10 +878,10 @@ function normalizeEmployeeData(emp) {
 }
 
 function excelToDecimal(v) {
-    if (!v) return 0;
+    if (v == null || v === "") return 0;
 
     if (typeof v === "number") {
-        return v * 24;
+        return (v % 1) * 24;
     }
 
     if (typeof v === "string" && v.includes(":")) {
