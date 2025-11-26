@@ -201,6 +201,8 @@ function handleFileSelect(e) {
     const file = e.target.files[0];
     if (file) {
         processFile(file);
+        // Resetar input para permitir reenvio do mesmo arquivo
+        e.target.value = '';
     }
 }
 
@@ -208,8 +210,20 @@ function handleFileSelect(e) {
 function processFile(file) {
     // Limpar dados anteriores
     employeeData = [];
-    Object.values(charts).forEach(chart => chart.destroy());
+    
+    // Destruir gráficos antigos com segurança
+    Object.values(charts).forEach(chart => {
+        if (chart && typeof chart.destroy === 'function') {
+            chart.destroy();
+        }
+    });
     charts = {};
+    
+    // Remover botão de compartilhamento se existir
+    const oldShareBtn = document.getElementById('shareBtn');
+    if (oldShareBtn) {
+        oldShareBtn.remove();
+    }
     
     fileName.textContent = `📄 ${file.name}`;
     fileName.style.display = 'block';
@@ -355,7 +369,7 @@ function processFile(file) {
             // TODO: REMOVER este filtro quando ANDERSON FELIPE FERREIRA DA COSTA entrar na empresa
             const namesToExclude = ['ANDERSON FELIPE FERREIRA DA COSTA'];
             const beforeFilter = employees.length;
-            employees = employees.filter(emp => {
+            let filteredEmployees = employees.filter(emp => {
                 const shouldExclude = namesToExclude.some(name => 
                     emp.name.toUpperCase().includes(name.toUpperCase())
                 );
@@ -365,16 +379,16 @@ function processFile(file) {
                 return !shouldExclude;
             });
             
-            if (beforeFilter !== employees.length) {
-                console.log(`⚠️  ${beforeFilter - employees.length} funcionário(s) filtrado(s) temporariamente`);
+            if (beforeFilter !== filteredEmployees.length) {
+                console.log(`⚠️  ${beforeFilter - filteredEmployees.length} funcionário(s) filtrado(s) temporariamente`);
             }
 
-            console.log(`\n✅ Funcionários válidos encontrados: ${employees.length}`);
+            console.log(`\n✅ Funcionários válidos encontrados: ${filteredEmployees.length}`);
             if (ignoredSheets.length > 0) {
                 console.log(`⏭️  Abas ignoradas (${ignoredSheets.length}): ${ignoredSheets.join(', ')}`);
             }
 
-            processEmployeeDataNew(employees);
+            processEmployeeDataNew(filteredEmployees);
             saveData(file.name);
             displayDashboard();
         } catch (error) {
@@ -413,14 +427,14 @@ function processEmployeeDataNew(employees) {
     // 🚫 FILTRO TEMPORÁRIO: Aplicar filtro aqui também
     // TODO: REMOVER quando ANDERSON FELIPE FERREIRA DA COSTA entrar na empresa
     const namesToExclude = ['ANDERSON FELIPE FERREIRA DA COSTA'];
-    employees = employees.filter(emp => {
+    let filteredEmployees = employees.filter(emp => {
         const shouldExclude = namesToExclude.some(name => 
             emp.name.toUpperCase().includes(name.toUpperCase())
         );
         return !shouldExclude;
     });
     
-    employeeData = employees.map((emp, idx) => {
+    employeeData = filteredEmployees.map((emp, idx) => {
         const balance = emp.balance;
         
         // Determinar status
