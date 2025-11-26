@@ -218,16 +218,23 @@ function processFile(file) {
             const workbook = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
             let employees = [];
 
+            // Filtrar apenas abas visíveis
+            const visibleSheets = workbook.Workbook?.Sheets 
+                ? workbook.Workbook.Sheets
+                    .filter(s => s.Hidden !== 1 && s.Hidden !== 2)
+                    .map(s => s.name)
+                : workbook.SheetNames;
 
-            const visibleSheets = workbook.Workbook.Sheets
-                .filter(s => s.Hidden !== 1 && s.Hidden !== 2)
-                .map(s => s.name);
+            console.log(`📋 Total de abas: ${workbook.SheetNames.length} | Visíveis: ${visibleSheets.length}`);
 
             visibleSheets.forEach(sheetName => {
-                if (shouldIgnoreSheet(sheetName)) return;
+                if (shouldIgnoreSheet(sheetName)) {
+                    console.log(`⏭️ Ignorando aba: ${sheetName}`);
+                    return;
+                }
 
                 const sheet = workbook.Sheets[sheetName];
-                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // formato simples: arrays
 
                 let mat = null;
                 let name = sheetName;
@@ -247,8 +254,29 @@ function processFile(file) {
                     if (!mat) mat = colA;
                     if (colB && typeof colB === 'string') name = colB.trim();
 
+                    // Debug para CINTIA e VERA
+                    if (name.toUpperCase().includes('CINTIA') || name.toUpperCase().includes('VERA')) {
+                        console.log(`🔍 ${name} linha ${i}:`, {
+                            colC_raw: colC,
+                            colC_type: typeof colC,
+                            colC_convertido: excelToDecimal(colC),
+                            colD_raw: colD,
+                            colD_type: typeof colD,
+                            colD_convertido: excelToDecimal(colD)
+                        });
+                    }
+
                     totalCredit += excelToDecimal(colC);
                     totalDebit += excelToDecimal(colD);
+                }
+                
+                // Debug final
+                if (name.toUpperCase().includes('CINTIA') || name.toUpperCase().includes('VERA')) {
+                    console.log(`✅ ${name} TOTAL:`, {
+                        credito: totalCredit,
+                        debito: totalDebit,
+                        saldo: totalCredit - totalDebit
+                    });
                 }
 
                 employees.push({
@@ -522,7 +550,6 @@ function createCharts() {
     charts = {};
 
     createEmployeeChart();
-    createMonthlyChart();
     createStatusChart();
     createTopEmployeesChart();
 }
@@ -555,53 +582,6 @@ function createEmployeeChart() {
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: 'Horas' }
-                }
-            }
-        }
-    });
-}
-
-// Gráfico de linha - Evolução mensal (se houver dados de mês)
-function createMonthlyChart() {
-    const ctx = document.getElementById('monthlyChart');
-    
-    // Agrupar por mês se disponível
-    const monthlyData = {};
-    employeeData.forEach(emp => {
-        const month = emp.month || 'Atual';
-        if (!monthlyData[month]) {
-            monthlyData[month] = { total: 0, count: 0 };
-        }
-        monthlyData[month].total += emp.balance;
-        monthlyData[month].count++;
-    });
-
-    const months = Object.keys(monthlyData);
-    const averages = months.map(month => monthlyData[month].total / monthlyData[month].count);
-
-    charts.monthly = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: months,
-            datasets: [{
-                label: 'Média de Saldo de Horas',
-                data: averages,
-                borderColor: 'rgba(54, 162, 235, 1)',
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: true }
             },
             scales: {
                 y: {
@@ -878,10 +858,10 @@ function normalizeEmployeeData(emp) {
 }
 
 function excelToDecimal(v) {
-    if (v == null || v === "") return 0;
+    if (!v) return 0;
 
     if (typeof v === "number") {
-        return (v % 1) * 24;
+        return v * 24;
     }
 
     if (typeof v === "string" && v.includes(":")) {
