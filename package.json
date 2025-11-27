@@ -1,0 +1,29 @@
+{
+  "name": "dashboard-banco-horas",
+  "version": "1.0.0",
+  "description": "Dashboard de banco de horas com backend Node.js e SQLite",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js",
+    "docker:build": "docker build -t dashboard-banco-horas .",
+    "docker:run": "docker run -d -p 3000:3000 -v dashboard-data:/app/data --name dashboard dashboard-banco-horas",
+    "docker:stop": "docker stop dashboard && docker rm dashboard",
+    "docker:logs": "docker logs -f dashboard",
+    "docker:compose": "docker-compose up -d",
+    "docker:compose:down": "docker-compose down",
+    "docker:compose:logs": "docker-compose logs -f"
+  },
+  "keywords": ["dashboard", "banco-horas", "express", "sqlite"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

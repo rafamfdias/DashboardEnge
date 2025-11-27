@@ -1,6 +1,9 @@
 let employeeData = [];
 let charts = {};
 
+// Detectar automaticamente o host (funciona em localhost e servidor de intranet)
+const API_URL = `${window.location.protocol}//${window.location.hostname}:${window.location.port || '3000'}/api/dashboard`;
+
 const fileInput = document.getElementById('fileInput');
 const uploadBox = document.getElementById('uploadBox');
 const fileName = document.getElementById('fileName');
@@ -14,7 +17,7 @@ const filterSelect = document.getElementById('filterSelect');
 
 // Verificar se há dados salvos ao carregar a página
 window.addEventListener('DOMContentLoaded', () => {
-    loadDataFromURL() || loadSavedData();
+    loadDataFromURL() || loadDataFromAPI();
 });
 
 uploadBox.addEventListener('click', () => fileInput.click());
@@ -25,17 +28,24 @@ changeFileBtn.addEventListener('click', () => fileInput.click());
 searchInput.addEventListener('input', filterTable);
 filterSelect.addEventListener('change', filterTable);
 
-// Carregar dados salvos do localStorage
-function loadSavedData() {
-    const savedData = localStorage.getItem('dashboardData');
-    const savedFileName = localStorage.getItem('dashboardFileName');
-    
-    if (savedData && savedFileName) {
-        try {
-            employeeData = JSON.parse(savedData);
-            
-            // 🚫 FILTRO TEMPORÁRIO: Aplicar filtro aos dados salvos
-            // TODO: REMOVER quando ANDERSON FELIPE FERREIRA DA COSTA entrar na empresa
+// Carregar dados salvos da API
+async function loadDataFromAPI() {
+    try {
+        const response = await fetch(`${API_URL}/latest`);
+        const data = await response.json();
+        
+        if (data.upload && data.employees) {
+            employeeData = data.employees.map(emp => ({
+                name: emp.name,
+                id: emp.id,
+                department: emp.department,
+                workedHours: emp.workedHours,
+                expectedHours: emp.expectedHours,
+                balance: emp.balance,
+                status: emp.status
+            }));
+
+            // Aplicar filtro temporário
             const namesToExclude = ['ANDERSON FELIPE FERREIRA DA COSTA'];
             const beforeFilter = employeeData.length;
             employeeData = employeeData.filter(emp => {
@@ -46,22 +56,21 @@ function loadSavedData() {
             });
             
             if (beforeFilter !== employeeData.length) {
-                console.log(`🚫 ${beforeFilter - employeeData.length} funcionário(s) filtrado(s) dos dados salvos`);
+                console.log(`🚫 ${beforeFilter - employeeData.length} funcionário(s) filtrado(s)`);
             }
             
-            fileName.textContent = `📄 ${savedFileName}`;
+            fileName.textContent = `📄 ${data.upload.filename} - ${new Date(data.upload.uploadDate).toLocaleDateString('pt-BR')}`;
             fileName.style.display = 'block';
             displayDashboard();
-            console.log('✅ Dados carregados do localStorage');
+            generateShareableLink();
+            console.log('✅ Dados carregados da API');
             return true;
-        } catch (error) {
-            console.error('❌ Erro ao carregar dados salvos:', error);
-            localStorage.removeItem('dashboardData');
-            localStorage.removeItem('dashboardFileName');
         }
+    } catch (error) {
+        console.error('❌ Erro ao carregar dados da API:', error);
     }
     
-    // Se não houver dados salvos, carregar dados de demonstração
+    // Se não houver dados na API, carregar dados de demonstração
     loadDemoData();
     return false;
 }
@@ -84,16 +93,62 @@ function loadDemoData() {
     console.log('✅ Dados de demonstração carregados');
 }
 
-// Salvar dados no localStorage
-function saveData(filename) {
+// Salvar dados na API
+async function saveData(filename) {
     try {
-        localStorage.setItem('dashboardData', JSON.stringify(employeeData));
-        localStorage.setItem('dashboardFileName', filename);
-        console.log('✅ Dados salvos no localStorage');
-        generateShareableLink(); // Gerar link compartilhável
+        const response = await fetch(`${API_URL}/upload`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                filename: filename,
+                employees: employeeData
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log('✅ Dados salvos no banco de dados:', result.message);
+            generateShareableLink();
+            
+            // Mostrar mensagem de sucesso ao usuário
+            showNotification('✅ Dados salvos com sucesso!', 'success');
+        } else {
+            throw new Error(result.error || 'Erro ao salvar');
+        }
     } catch (error) {
         console.error('❌ Erro ao salvar dados:', error);
+        showNotification('❌ Erro ao salvar dados no servidor', 'error');
     }
+}
+
+// Função para mostrar notificações
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 10000;
+        font-weight: 500;
+        animation: slideIn 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
 }
 
 // Carregar dados da URL (se existir parâmetro 'data')

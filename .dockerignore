@@ -1,0 +1,27 @@
+# Ignorar no build do Docker
+node_modules/
+npm-debug.log
+.git/
+.gitignore
+*.md
+!README.md
+
+# Arquivos de desenvolvimento
+.env
+.vscode/
+.idea/
+
+# Dados locais
+database.db
+data/
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Documentação (já está no repositório)
+DEPLOY-INTRANET.md
+CHECKLIST-DEPLOY.md
+FAQ-INTRANET.md
+INICIO-RAPIDO.md
