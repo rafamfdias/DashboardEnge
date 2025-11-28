@@ -59,7 +59,10 @@ async function loadDataFromAPI() {
                 console.log(`🚫 ${beforeFilter - employeeData.length} funcionário(s) filtrado(s)`);
             }
             
-            fileName.textContent = `📄 ${data.upload.filename} - ${new Date(data.upload.uploadDate).toLocaleDateString('pt-BR')}`;
+            const uploadDate = new Date(data.upload.uploadDate);
+            const dateStr = uploadDate.toLocaleDateString('pt-BR');
+            const timeStr = uploadDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            fileName.textContent = `📄 ${data.upload.filename} - ${dateStr} às ${timeStr}`;
             fileName.style.display = 'block';
             displayDashboard();
             generateShareableLink();
