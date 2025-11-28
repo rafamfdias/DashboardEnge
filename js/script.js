@@ -59,9 +59,10 @@ async function loadDataFromAPI() {
                 console.log(`🚫 ${beforeFilter - employeeData.length} funcionário(s) filtrado(s)`);
             }
             
-            const uploadDate = new Date(data.upload.uploadDate + 'Z'); // Garantir que seja tratado como UTC
-            const dateStr = uploadDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-            const timeStr = uploadDate.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+            // Tratar como horário local já salvo (não converter)
+            const uploadDate = new Date(data.upload.uploadDate);
+            const dateStr = uploadDate.toLocaleDateString('pt-BR');
+            const timeStr = uploadDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             fileName.textContent = `📄 ${data.upload.filename} - ${dateStr} às ${timeStr}`;
             fileName.style.display = 'block';
             displayDashboard();
@@ -99,9 +100,15 @@ function loadDemoData() {
 // Salvar dados na API
 async function saveData(filename) {
     try {
-        // Capturar data/hora local do navegador do usuário
+        // Capturar data/hora LOCAL do navegador do usuário (não UTC)
         const now = new Date();
-        const uploadDateTime = now.toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' }).replace(' ', 'T');
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const uploadDateTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
         
         const response = await fetch(`${API_URL}/upload`, {
             method: 'POST',
