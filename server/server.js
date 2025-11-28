@@ -54,7 +54,7 @@ app.get('/api/dashboard/latest', (req, res) => {
 
 // POST - Salvar novo upload
 app.post('/api/dashboard/upload', (req, res) => {
-    const { filename, employees } = req.body;
+    const { filename, employees, uploadDateTime } = req.body;
 
     if (!filename || !employees || !Array.isArray(employees)) {
         return res.status(400).json({ error: 'Dados inválidos' });
@@ -63,10 +63,13 @@ app.post('/api/dashboard/upload', (req, res) => {
     const totalEmployees = employees.length;
     const totalBalance = employees.reduce((sum, emp) => sum + (emp.balance || 0), 0);
 
+    // Usar data/hora enviada pelo navegador, ou data/hora do servidor como fallback
+    const uploadDate = uploadDateTime || new Date().toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' }).replace(' ', 'T');
+
     // Inserir upload
     db.run(
-        'INSERT INTO uploads (filename, total_employees, total_balance) VALUES (?, ?, ?)',
-        [filename, totalEmployees, totalBalance],
+        'INSERT INTO uploads (filename, upload_date, total_employees, total_balance) VALUES (?, ?, ?, ?)',
+        [filename, uploadDate, totalEmployees, totalBalance],
         function(err) {
             if (err) {
                 return res.status(500).json({ error: err.message });

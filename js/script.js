@@ -59,9 +59,9 @@ async function loadDataFromAPI() {
                 console.log(`🚫 ${beforeFilter - employeeData.length} funcionário(s) filtrado(s)`);
             }
             
-            const uploadDate = new Date(data.upload.uploadDate);
-            const dateStr = uploadDate.toLocaleDateString('pt-BR');
-            const timeStr = uploadDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const uploadDate = new Date(data.upload.uploadDate + 'Z'); // Garantir que seja tratado como UTC
+            const dateStr = uploadDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+            const timeStr = uploadDate.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
             fileName.textContent = `📄 ${data.upload.filename} - ${dateStr} às ${timeStr}`;
             fileName.style.display = 'block';
             displayDashboard();
@@ -99,6 +99,10 @@ function loadDemoData() {
 // Salvar dados na API
 async function saveData(filename) {
     try {
+        // Capturar data/hora local do navegador do usuário
+        const now = new Date();
+        const uploadDateTime = now.toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' }).replace(' ', 'T');
+        
         const response = await fetch(`${API_URL}/upload`, {
             method: 'POST',
             headers: {
@@ -106,7 +110,8 @@ async function saveData(filename) {
             },
             body: JSON.stringify({
                 filename: filename,
-                employees: employeeData
+                employees: employeeData,
+                uploadDateTime: uploadDateTime
             })
         });
 
