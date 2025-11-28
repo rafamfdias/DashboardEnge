@@ -14,6 +14,13 @@ const tableSection = document.getElementById('tableSection');
 const instructions = document.getElementById('instructions');
 const searchInput = document.getElementById('searchInput');
 const filterSelect = document.getElementById('filterSelect');
+const userNameModal = document.getElementById('userNameModal');
+const userNameInput = document.getElementById('userNameInput');
+const confirmUploadBtn = document.getElementById('confirmUploadBtn');
+const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+
+let pendingFile = null;
+let pendingProcessedData = null;
 
 // Verificar se há dados salvos ao carregar a página
 window.addEventListener('DOMContentLoaded', () => {
@@ -27,6 +34,8 @@ fileInput.addEventListener('change', handleFileSelect);
 changeFileBtn.addEventListener('click', () => fileInput.click());
 searchInput.addEventListener('input', filterTable);
 filterSelect.addEventListener('change', filterTable);
+confirmUploadBtn.addEventListener('click', confirmUpload);
+cancelUploadBtn.addEventListener('click', cancelUpload);
 
 // Carregar dados salvos da API
 async function loadDataFromAPI() {
@@ -63,7 +72,8 @@ async function loadDataFromAPI() {
             const uploadDate = new Date(data.upload.uploadDate);
             const dateStr = uploadDate.toLocaleDateString('pt-BR');
             const timeStr = uploadDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            fileName.textContent = `📄 ${data.upload.filename} - ${dateStr} às ${timeStr}`;
+            const uploadedBy = data.upload.uploadedBy ? ` por ${data.upload.uploadedBy}` : '';
+            fileName.textContent = `📄 ${data.upload.filename} - ${dateStr} às ${timeStr}${uploadedBy}`;
             fileName.style.display = 'block';
             displayDashboard();
             generateShareableLink();
@@ -98,7 +108,7 @@ function loadDemoData() {
 }
 
 // Salvar dados na API
-async function saveData(filename) {
+async function saveData(filename, uploadedBy) {
     try {
         // Capturar data/hora LOCAL do navegador do usuário (não UTC)
         const now = new Date();
@@ -118,7 +128,8 @@ async function saveData(filename) {
             body: JSON.stringify({
                 filename: filename,
                 employees: employeeData,
-                uploadDateTime: uploadDateTime
+                uploadDateTime: uploadDateTime,
+                uploadedBy: uploadedBy
             })
         });
 
@@ -362,14 +373,48 @@ function processFile(file) {
 
             employeeData = employees.map(normalizeEmployeeData);
 
-            saveData(file.name);
-            displayDashboard();
+            // Armazenar dados processados e mostrar modal para pedir nome
+            pendingFile = file;
+            pendingProcessedData = employeeData;
+            showUserNameModal();
+            
         } catch (error) {
             alert('Erro ao processar arquivo: ' + error.message);
             console.error(error);
         }
     };
     reader.readAsArrayBuffer(file);
+}
+
+// Mostrar modal para pedir nome do usuário
+function showUserNameModal() {
+    userNameModal.style.display = 'flex';
+    userNameInput.value = '';
+    userNameInput.focus();
+}
+
+// Confirmar upload com nome do usuário
+function confirmUpload() {
+    const userName = userNameInput.value.trim();
+    
+    if (!userName) {
+        alert('Por favor, digite seu nome antes de continuar.');
+        userNameInput.focus();
+        return;
+    }
+    
+    userNameModal.style.display = 'none';
+    employeeData = pendingProcessedData;
+    saveData(pendingFile.name, userName);
+    displayDashboard();
+}
+
+// Cancelar upload
+function cancelUpload() {
+    userNameModal.style.display = 'none';
+    pendingFile = null;
+    pendingProcessedData = null;
+    fileInput.value = '';
 }
 
 // Converter tempo HH:MM ou HH:MM:SS para horas decimais

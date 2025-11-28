@@ -23,10 +23,18 @@ db.serialize(() => {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             filename TEXT NOT NULL,
             upload_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            uploaded_by TEXT,
             total_employees INTEGER,
             total_balance REAL
         )
     `);
+
+    // Adicionar coluna uploaded_by se não existir (para bancos antigos)
+    db.run(`ALTER TABLE uploads ADD COLUMN uploaded_by TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column')) {
+            console.error('Erro ao adicionar coluna uploaded_by:', err.message);
+        }
+    });
 
     // Tabela de funcionários
     db.run(`

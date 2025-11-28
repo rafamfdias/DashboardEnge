@@ -35,6 +35,7 @@ app.get('/api/dashboard/latest', (req, res) => {
                     id: upload.id,
                     filename: upload.filename,
                     uploadDate: upload.upload_date,
+                    uploadedBy: upload.uploaded_by,
                     totalEmployees: upload.total_employees,
                     totalBalance: upload.total_balance
                 },
@@ -54,7 +55,7 @@ app.get('/api/dashboard/latest', (req, res) => {
 
 // POST - Salvar novo upload
 app.post('/api/dashboard/upload', (req, res) => {
-    const { filename, employees, uploadDateTime } = req.body;
+    const { filename, employees, uploadDateTime, uploadedBy } = req.body;
 
     if (!filename || !employees || !Array.isArray(employees)) {
         return res.status(400).json({ error: 'Dados inválidos' });
@@ -68,8 +69,8 @@ app.post('/api/dashboard/upload', (req, res) => {
 
     // Inserir upload
     db.run(
-        'INSERT INTO uploads (filename, upload_date, total_employees, total_balance) VALUES (?, ?, ?, ?)',
-        [filename, uploadDate, totalEmployees, totalBalance],
+        'INSERT INTO uploads (filename, upload_date, uploaded_by, total_employees, total_balance) VALUES (?, ?, ?, ?, ?)',
+        [filename, uploadDate, uploadedBy || 'Não informado', totalEmployees, totalBalance],
         function(err) {
             if (err) {
                 return res.status(500).json({ error: err.message });
@@ -144,6 +145,7 @@ app.get('/api/dashboard/:id', (req, res) => {
                     id: upload.id,
                     filename: upload.filename,
                     uploadDate: upload.upload_date,
+                    uploadedBy: upload.uploaded_by,
                     totalEmployees: upload.total_employees,
                     totalBalance: upload.total_balance
                 },

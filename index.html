@@ -37,6 +37,19 @@
             <button id="changeFileBtn" class="change-file-btn" style="display: none;">📤 Trocar Planilha</button>
         </section>
 
+        <!-- Modal para Nome do Usuário -->
+        <div id="userNameModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>👤 Identificação</h3>
+                <p>Digite seu nome antes de enviar a nova planilha:</p>
+                <input type="text" id="userNameInput" placeholder="Seu nome completo" maxlength="100">
+                <div class="modal-buttons">
+                    <button id="confirmUploadBtn" class="btn-primary">✅ Confirmar e Enviar</button>
+                    <button id="cancelUploadBtn" class="btn-secondary">❌ Cancelar</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Cards de Resumo -->
         <section class="summary-cards" id="summaryCards" style="display: none;">
             <div class="card">
