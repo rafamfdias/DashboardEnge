@@ -76,7 +76,6 @@ async function loadDataFromAPI() {
             fileName.textContent = `📄 ${data.upload.filename} - ${dateStr} às ${timeStr}${uploadedBy}`;
             fileName.style.display = 'block';
             displayDashboard();
-            generateShareableLink();
             console.log('✅ Dados carregados da API');
             return true;
         }
@@ -103,7 +102,6 @@ function loadDemoData() {
     fileName.textContent = `📄 Dados de Demonstração`;
     fileName.style.display = 'block';
     displayDashboard();
-    generateShareableLink(); // Gerar botão de compartilhamento
     console.log('✅ Dados de demonstração carregados');
 }
 
@@ -137,7 +135,6 @@ async function saveData(filename, uploadedBy) {
         
         if (result.success) {
             console.log('✅ Dados salvos no banco de dados:', result.message);
-            generateShareableLink();
             
             // Mostrar mensagem de sucesso ao usuário
             showNotification('✅ Dados salvos com sucesso!', 'success');
@@ -215,49 +212,7 @@ function loadDataFromURL() {
     return false;
 }
 
-// Gerar link compartilhável
-function generateShareableLink() {
-    if (employeeData.length === 0) return;
-    
-    try {
-        // Codificar dados em base64
-        const encodedData = btoa(JSON.stringify(employeeData));
-        const shareableURL = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
-        
-        // Criar botão de compartilhamento se não existir
-        let shareBtn = document.getElementById('shareBtn');
-        if (!shareBtn) {
-            shareBtn = document.createElement('button');
-            shareBtn.id = 'shareBtn';
-            shareBtn.className = 'share-btn';
-            shareBtn.innerHTML = '🔗 Copiar Link de Compartilhamento';
-            shareBtn.onclick = () => copyShareableLink(shareableURL);
-            changeFileBtn.parentNode.insertBefore(shareBtn, changeFileBtn.nextSibling);
-        }
-        
-        console.log('✅ Link compartilhável gerado');
-    } catch (error) {
-        console.error('❌ Erro ao gerar link:', error);
-    }
-}
-
-// Copiar link para área de transferência
-function copyShareableLink(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        const shareBtn = document.getElementById('shareBtn');
-        const originalText = shareBtn.innerHTML;
-        shareBtn.innerHTML = '✅ Link Copiado!';
-        shareBtn.style.background = '#10b981';
-        
-        setTimeout(() => {
-            shareBtn.innerHTML = originalText;
-            shareBtn.style.background = '';
-        }, 2000);
-    }).catch(err => {
-        alert('Link: ' + url);
-        console.error('Erro ao copiar:', err);
-    });
-}
+// Função removida - botão de compartilhamento não é mais necessário
 
 // Funções de Upload
 function handleDragOver(e) {
