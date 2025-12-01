@@ -827,12 +827,23 @@ function populateTable() {
         row.innerHTML = `
             <td>${emp.name || 'N/A'}</td>
             <td>${emp.id || 'N/A'}</td>
-            <td>${emp.department || 'N/A'}</td>
             <td>${decimalToHHMM(emp.workedHours)}</td>
             <td>${decimalToHHMM(emp.expectedHours)}</td>
             <td class="${emp.balance > 0.0167 ? 'positive-value' : emp.balance < -0.0167 ? 'negative-value' : ''}" data-balance="${emp.balance}">${decimalToHHMM(emp.balance)}</td>
             <td><span class="status-badge ${emp.status.toLowerCase()}">${emp.status}</span></td>
+            <td>
+                <button class="action-btn" onclick="showEmployeeDetails(${index})" title="Ver mais detalhes">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="1"/>
+                        <circle cx="12" cy="5" r="1"/>
+                        <circle cx="12" cy="19" r="1"/>
+                    </svg>
+                </button>
+            </td>
         `;
+        
+        // Armazenar dados do funcionário na linha para fácil acesso
+        row.dataset.employeeData = JSON.stringify(emp);
     });
     
     console.log('✅ Tabela populada com sucesso');
@@ -951,4 +962,43 @@ function decimalToHHMM(decimal) {
 
     return `${negative ? "-" : ""}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
+
+// Função para mostrar detalhes do funcionário
+function showEmployeeDetails(index) {
+    const emp = employeeData[index];
+    const modal = document.getElementById('employeeDetailsModal');
+    
+    // Preencher os dados no modal
+    document.getElementById('detailName').textContent = emp.name || 'N/A';
+    document.getElementById('detailId').textContent = emp.id || 'N/A';
+    document.getElementById('detailCredit').textContent = decimalToHHMM(emp.workedHours);
+    document.getElementById('detailDebit').textContent = decimalToHHMM(emp.expectedHours);
+    
+    const balanceElement = document.getElementById('detailBalance');
+    balanceElement.textContent = decimalToHHMM(emp.balance);
+    balanceElement.className = 'detail-value';
+    if (emp.balance > 0.0167) {
+        balanceElement.classList.add('detail-positive');
+    } else if (emp.balance < -0.0167) {
+        balanceElement.classList.add('detail-negative');
+    }
+    
+    const statusElement = document.getElementById('detailStatus');
+    statusElement.innerHTML = `<span class="status-badge ${emp.status.toLowerCase()}">${emp.status}</span>`;
+    
+    // Mostrar o modal
+    modal.style.display = 'flex';
+}
+
+// Event listeners para fechar o modal
+document.getElementById('closeEmployeeDetailsBtn')?.addEventListener('click', () => {
+    document.getElementById('employeeDetailsModal').style.display = 'none';
+});
+
+// Fechar modal ao clicar fora
+document.getElementById('employeeDetailsModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'employeeDetailsModal') {
+        document.getElementById('employeeDetailsModal').style.display = 'none';
+    }
+});
 
